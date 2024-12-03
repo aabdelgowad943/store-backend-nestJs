@@ -1,0 +1,105 @@
+generator client {
+  provider = "prisma-client-js"
+}
+
+datasource db {
+  provider = "mongodb"
+  url      = env("DATABASE_URL")
+}
+
+enum Role {
+  BUYER
+  SELLER
+  ADMIN
+  @@map("roles") // Map the enum to a collection if needed
+}
+
+model User {
+  id           String       @id @default(auto()) @map("_id") @db.ObjectId
+  username     String       @unique
+  email        String       @unique
+  password     String
+    token     String?  
+  role         Role         @default(BUYER) // Enum-based role
+  profileImage String?      // Optional profile image URL
+  bio          String?      // Optional bio for seller profile
+  books        Book[]       @relation("UserBooks")
+  orders       Order[]      @relation("UserOrders")
+  vouchers     Voucher[]    @relation("UserVouchers")
+  createdAt    DateTime     @default(now())
+  updatedAt    DateTime     @updatedAt
+  statistics   Statistics[] // Seller statistics
+  name          String?
+
+  Cart Cart[]
+}
+
+model Book {
+  id          String        @id @default(auto()) @map("_id") @db.ObjectId
+  title       String
+  description String
+  price       Float
+  author      String
+  isFeatured  Boolean?
+  fileUrl     String        // URL for storing the PDF file
+  sellerId    String        @db.ObjectId
+  seller      User          @relation("UserBooks", fields: [sellerId], references: [id])
+  vouchers    Voucher[]     @relation("BookVouchers")
+  orders      Order[]       @relation("BookOrders")
+  createdAt   DateTime      @default(now())
+  updatedAt   DateTime      @updatedAt
+
+  Cart Cart[]
+}
+
+model Voucher {
+  id            String      @id @default(auto()) @map("_id") @db.ObjectId
+  code          String      @unique
+  discount      Float       // e.g., 10% as 0.1
+  expiration    DateTime
+  usedCount     Int         @default(0) // Track how many times the voucher has been used
+  bookId        String      @db.ObjectId
+  book          Book        @relation("BookVouchers", fields: [bookId], references: [id])
+  sellerId      String      @db.ObjectId
+  seller        User        @relation("UserVouchers", fields: [sellerId], references: [id])
+  createdAt     DateTime    @default(now())
+  isActive      Boolean     @default(true) // Mark voucher as active or inactive
+}
+
+model Order {
+  id            String      @id @default(auto()) @map("_id") @db.ObjectId
+  buyerId       String      @db.ObjectId
+  buyer         User        @relation("UserOrders", fields: [buyerId], references: [id])
+  bookId        String      @db.ObjectId
+  book          Book        @relation("BookOrders", fields: [bookId], references: [id])
+  amount        Float       // Total amount paid
+  status        String      @default("pending") // Track order status (pending, completed, canceled)
+  createdAt     DateTime    @default(now())
+  updatedAt     DateTime    @updatedAt
+}
+
+model Statistics {
+  id               String      @id @default(auto()) @map("_id") @db.ObjectId
+  sellerId         String      @db.ObjectId
+  seller           User        @relation(fields: [sellerId], references: [id])
+  totalSales       Int         @default(0)
+  totalEarnings    Float       @default(0)
+  topSellingBookId String?     // Optional top-selling book reference
+  totalVouchersCreated Int     @default(0) // New metric for tracking vouchers created
+  totalVouchersUsed   Int      @default(0) // New metric for tracking vouchers used
+}
+
+
+model Cart {
+  id        String   @id @default(auto()) @map("_id") @db.ObjectId
+  userId    String   @db.ObjectId
+  bookId    String   @db.ObjectId
+  quantity  Int      @default(1) // Track quantity of books in the cart
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+
+  user      User     @relation(fields: [userId], references: [id])
+  book      Book     @relation(fields: [bookId], references: [id])
+
+  @@unique([userId, bookId]) // Prevent the same book from being added multiple times
+}
