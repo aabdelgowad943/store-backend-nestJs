@@ -113,7 +113,7 @@ export class AuthService {
         message: 'Successfully logged in',
         statusCode: HttpStatus.OK,
         sellerId: user.role === 'SELLER' ? user.id : null,
-        id: user.id,  
+        id: user.id,
         username: user.username,
         email: user.email,
       };
@@ -128,6 +128,7 @@ export class AuthService {
       );
     }
   }
+  // hello
 
   private async hashPassword(password: string) {
     return bcrypt.hash(password, 10);
